@@ -4,6 +4,8 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 const shiftLetter = z.enum(["A", "B", "C"]);
 const destination = z.enum(["cash", "comp", "accrue"]);
 const payGrade = z.enum(["F1", "F2", "F3", "F4", "F5"]);
+const employeeTrack = z.enum(["shift", "admin9080"]);
+const fridayGroup = z.enum(["week1", "week2"]);
 
 const rateSegmentSchema = z.object({
   effectiveFrom: isoDate,
@@ -51,7 +53,14 @@ const hourBlockSchema = z.discriminatedUnion("type", [
 ]);
 
 export const profileSchema = z.object({
-  shift: shiftLetter,
+  // .default("shift") so profiles saved before this field existed still
+  // parse as the track they always were.
+  track: employeeTrack.default("shift"),
+  // .nullable().default(null) so admin9080 profiles (which have no shift)
+  // parse, and so old "shift"-only saves keep working unchanged.
+  shift: shiftLetter.nullable().default(null),
+  // Meaningful only when track === "admin9080".
+  fridayGroup: fridayGroup.nullable().default(null),
   rateSegments: z.array(rateSegmentSchema).min(1),
   /**
    * Last annual longevity payoff (LP pay code). Defaults to 0 so profiles

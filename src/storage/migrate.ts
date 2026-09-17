@@ -36,6 +36,8 @@ function migrateV0toV1(legacy: LegacyV0Shape): StoredDataV1 {
       legacy.shift && typeof legacy.hourlyRate === "number"
         ? {
             shift: legacy.shift,
+            track: "shift" as const,
+            fridayGroup: null,
             rateSegments: [
               {
                 effectiveFrom: "1970-01-01",

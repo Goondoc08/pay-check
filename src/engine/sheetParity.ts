@@ -46,6 +46,8 @@ export function profileFromFixture(
   }
   return {
     shift,
+    track: "shift",
+    fridayGroup: null,
     rateSegments,
     longevityAnnual: fixtureProfile.longevity,
   };

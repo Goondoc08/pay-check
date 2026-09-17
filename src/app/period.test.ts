@@ -111,6 +111,8 @@ describe("entriesToBlocks / blocksToEntries round-trip", () => {
     const period = year.periods[4];
     const profile = {
       shift: "A" as const,
+      track: "shift" as const,
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: year.effectiveFrom,
@@ -185,6 +187,8 @@ describe("entriesToBlocks / blocksToEntries round-trip", () => {
 
     const profile = {
       shift: "A" as const,
+      track: "shift" as const,
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: year.effectiveFrom,
@@ -209,6 +213,8 @@ describe("entriesToBlocks / blocksToEntries round-trip", () => {
 
   const flatProfile = {
     shift: "A" as const,
+    track: "shift" as const,
+    fridayGroup: null,
     rateSegments: [
       {
         effectiveFrom: year.effectiveFrom,

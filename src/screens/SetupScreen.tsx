@@ -7,7 +7,13 @@ import {
 } from "../app/stepProgression";
 import { todayIso } from "../app/years";
 import type { PayYear } from "../data/schema";
-import type { PayGrade, Profile, ShiftLetter } from "../engine/types";
+import type {
+  EmployeeTrack,
+  FridayGroup,
+  PayGrade,
+  Profile,
+  ShiftLetter,
+} from "../engine/types";
 
 const NONE = "__none__";
 
@@ -90,7 +96,11 @@ export function SetupScreen({
   ) => (saved && saved in table ? saved : NONE);
   const grades = Object.keys(year.payPlan) as PayGrade[];
 
+  const [track, setTrack] = useState<EmployeeTrack>(profile?.track ?? "shift");
   const [shift, setShift] = useState<ShiftLetter>(profile?.shift ?? "A");
+  const [fridayGroup, setFridayGroup] = useState<FridayGroup>(
+    profile?.fridayGroup ?? "week1",
+  );
   const [grade, setGrade] = useState<PayGrade>(progression?.grade ?? grades[0]);
 
   // The pay plan table is the single source of truth for what a step pays
@@ -169,7 +179,9 @@ export function SetupScreen({
   function handleSave() {
     if (!canSave) return;
     const newProfile: Profile = {
-      shift,
+      track,
+      shift: track === "shift" ? shift : null,
+      fridayGroup: track === "admin9080" ? fridayGroup : null,
       rateSegments: [
         {
           effectiveFrom: year.effectiveFrom,
@@ -230,16 +242,57 @@ export function SetupScreen({
         )}
       </div>
 
-      <Select
-        label="Shift"
-        value={shift}
-        onChange={(v) => setShift(v as ShiftLetter)}
-        options={[
-          { value: "A", label: "A-Shift" },
-          { value: "B", label: "B-Shift" },
-          { value: "C", label: "C-Shift" },
-        ]}
-      />
+      <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
+        <h2 className="text-sm font-medium text-ink-muted">Employee type</h2>
+        <div className="flex gap-2">
+          {(
+            [
+              { value: "shift", label: "Shift" },
+              { value: "admin9080", label: "Admin (9/80)" },
+            ] as { value: EmployeeTrack; label: string }[]
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setTrack(opt.value)}
+              className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                track === opt.value
+                  ? "border-accent bg-accent-soft font-semibold text-accent"
+                  : "border-line"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-ink-muted">
+          Admin (9/80) is for Captains/BCs assigned to admin, working a 9/80
+          schedule on a Friday-noon FLSA workweek — not for civilian staff.
+        </p>
+      </div>
+
+      {track === "shift" ? (
+        <Select
+          label="Shift"
+          value={shift}
+          onChange={(v) => setShift(v as ShiftLetter)}
+          options={[
+            { value: "A", label: "A-Shift" },
+            { value: "B", label: "B-Shift" },
+            { value: "C", label: "C-Shift" },
+          ]}
+        />
+      ) : (
+        <Select
+          label="Friday group"
+          value={fridayGroup}
+          onChange={(v) => setFridayGroup(v as FridayGroup)}
+          options={[
+            { value: "week1", label: "Week 1 — off payday Friday" },
+            { value: "week2", label: "Week 2 — off last-day Friday" },
+          ]}
+        />
+      )}
 
       <Select
         label="Rank / grade"

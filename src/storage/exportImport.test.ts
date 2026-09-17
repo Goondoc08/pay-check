@@ -20,6 +20,8 @@ const sample: StoredDataV1 = {
   version: 1,
   profile: {
     shift: "C",
+    track: "shift",
+    fridayGroup: null,
     rateSegments: [
       { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
       {

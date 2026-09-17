@@ -1,4 +1,21 @@
 export type ShiftLetter = "A" | "B" | "C";
+
+/**
+ * "shift" is the original 24-hr rotating fire-suppression track. "admin9080"
+ * is Captains/BCs assigned to admin, working a 9/80 schedule on a Friday-
+ * noon-to-Friday-noon FLSA workweek instead — see engine/adminPeriod.ts.
+ * Civilian (non-step-plan) admin staff are out of scope; this track is only
+ * for members still on the grade/step pay plan.
+ */
+export type EmployeeTrack = "shift" | "admin9080";
+
+/**
+ * Which Friday of every pay period an admin9080 member has off — fixed per
+ * person, never changes. "week1" is off the period's first Friday (the
+ * payday Friday, since pay lags a period) and works the last one; "week2"
+ * is the reverse.
+ */
+export type FridayGroup = "week1" | "week2";
 /**
  * F1 (Fire Fighter) .. F4/F5 (Battalion Chief) — see docs/PAY_PLAN.md.
  * FY26 has 5 grades; FY27's proposed Lieutenant/Captain merger drops it to
@@ -24,7 +41,12 @@ export interface RateSegment {
 }
 
 export interface Profile {
-  shift: ShiftLetter;
+  /** Defaults to "shift" for every profile saved before this field existed. */
+  track: EmployeeTrack;
+  /** Meaningful only when track === "shift"; null for admin9080. */
+  shift: ShiftLetter | null;
+  /** Meaningful only when track === "admin9080"; null for shift. */
+  fridayGroup: FridayGroup | null;
   /** Sorted ascending by effectiveFrom. Must have at least one segment. */
   rateSegments: RateSegment[];
   /**
@@ -32,9 +54,10 @@ export interface Profile {
    * own check each October, but FLSA still requires this non-discretionary
    * pay to be folded into the "regular rate" for overtime, so it adds
    * `(longevityAnnual / 2912) x otHours x 0.5` to every period's FLSA
-   * premium. Verified against a real check: omitting it left the engine
-   * $0.30 light on a 6-hr-OT period. Both workbooks carry it as the
-   * "Last Longevity" input cell (N3) and use exactly this formula.
+   * premium (2912 for "shift"; 2080 for "admin9080" — see
+   * engine/adminPeriod.ts). Verified against a real check: omitting it left
+   * the engine $0.30 light on a 6-hr-OT period. Both workbooks carry it as
+   * the "Last Longevity" input cell (N3) and use exactly this formula.
    */
   longevityAnnual: number;
 }

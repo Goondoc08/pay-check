@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useAppData } from "../app/AppData";
 import {
   aggregateLineItems,
+  blocksToAdminEntries,
   blocksToEntries,
+  defaultAdmin9080DayEntries,
   defaultDayEntries,
   entriesToBlocks,
   MAX_DAY_LINES,
@@ -11,6 +13,7 @@ import {
   type DayLine,
 } from "../app/period";
 import type { PayYear, Period } from "../data/schema";
+import { computeAdminPeriod } from "../engine/adminPeriod";
 import { computePeriod } from "../engine/period";
 import type { PayGrade, Profile } from "../engine/types";
 
@@ -145,12 +148,14 @@ function LineFields({
   line,
   stepUpGrades,
   scheduledHours,
+  allowedTypes,
   onChange,
   onRemove,
 }: {
   line: DayLine;
   stepUpGrades: PayGrade[];
   scheduledHours: number;
+  allowedTypes: DayEntryType[];
   onChange: (next: DayLine) => void;
   onRemove?: (() => void) | undefined;
 }) {
@@ -171,7 +176,7 @@ function LineFields({
             onChange({ ...line, type, hours });
           }}
         >
-          {(Object.keys(TYPE_LABELS) as DayEntryType[]).map((t) => (
+          {allowedTypes.map((t) => (
             <option key={t} value={t}>
               {TYPE_LABELS[t]}
             </option>
@@ -239,13 +244,22 @@ function LineFields({
 function DayRow({
   entry,
   stepUpGrades,
+  allowedTypes,
   onChange,
 }: {
   entry: DayEntry;
   stepUpGrades: PayGrade[];
+  allowedTypes: DayEntryType[];
   onChange: (next: DayEntry) => void;
 }) {
   const isIdle = entry.lines.every((l) => l.type === "off" || l.hours <= 0);
+  // A split day defaults its second line to "stepUp" (riding up) where
+  // that's an allowed type — the common reason a fire-ops shift splits.
+  // Admin has no step-up concept, so its default second line is PTO
+  // instead (e.g. part worked, part sick the same day).
+  const splitDefaultType: DayEntryType = allowedTypes.includes("stepUp")
+    ? "stepUp"
+    : "pto";
 
   function setLine(index: number, next: DayLine) {
     const lines = entry.lines.slice();
@@ -258,9 +272,7 @@ function DayRow({
       ...entry,
       lines: [
         ...entry.lines,
-        // A split shift is usually "some at rank, some riding up", so
-        // step-up is the useful default for the second line.
-        { type: "stepUp", hours: 0, grade: entry.lines[0].grade },
+        { type: splitDefaultType, hours: 0, grade: entry.lines[0].grade },
       ],
     });
   }
@@ -286,6 +298,7 @@ function DayRow({
             line={line}
             stepUpGrades={stepUpGrades}
             scheduledHours={entry.scheduledHours}
+            allowedTypes={allowedTypes}
             onChange={(next) => setLine(i, next)}
             onRemove={i > 0 ? () => removeLine(i) : undefined}
           />
@@ -479,6 +492,12 @@ export function PeriodScreen({
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const memberGrade = progression?.grade ?? null;
+  const isAdmin = profile.track === "admin9080";
+  // Both fall back defensively (Setup always sets the field that matters
+  // for the active track) rather than asserting non-null against stale or
+  // hand-edited storage.
+  const shift = profile.shift ?? "A";
+  const fridayGroup = profile.fridayGroup ?? "week1";
 
   // Entries are local editing state, loaded once per period (not re-derived
   // from saved blocks after every keystroke): entriesToBlocks() drops a
@@ -488,26 +507,28 @@ export function PeriodScreen({
   // flipped the day's type to "Off" mid-edit and the hours field vanished
   // under the user's cursor. Saving still happens on every edit (below);
   // just not reading back.
-  const [entries, setEntries] = useState<DayEntry[]>(() => {
+  function loadEntries(): DayEntry[] {
     const saved = getPeriodBlocks(year.id, period.n);
+    if (isAdmin) {
+      return saved.length > 0
+        ? blocksToAdminEntries(period, fridayGroup, saved)
+        : defaultAdmin9080DayEntries(period, fridayGroup);
+    }
     return saved.length > 0
-      ? blocksToEntries(year, profile.shift, period, saved, memberGrade)
-      : defaultDayEntries(year, profile.shift, period, memberGrade);
-  });
+      ? blocksToEntries(year, shift, period, saved, memberGrade)
+      : defaultDayEntries(year, shift, period, memberGrade);
+  }
+
+  const [entries, setEntries] = useState<DayEntry[]>(loadEntries);
 
   useEffect(() => {
-    const saved = getPeriodBlocks(year.id, period.n);
-    setEntries(
-      saved.length > 0
-        ? blocksToEntries(year, profile.shift, period, saved, memberGrade)
-        : defaultDayEntries(year, profile.shift, period, memberGrade),
-    );
+    setEntries(loadEntries());
     // Deliberately excludes getPeriodBlocks: it's a live snapshot of
     // storage that changes on every save, and re-syncing from it here is
     // exactly the round trip this fix removes. Re-sync only when the
     // member switches to a genuinely different period/shift/year/grade.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year.id, period.n, profile.shift, memberGrade]);
+  }, [year.id, period.n, profile.track, shift, fridayGroup, memberGrade]);
 
   function updateEntry(index: number, next: DayEntry) {
     const updated = entries.slice();
@@ -517,22 +538,32 @@ export function PeriodScreen({
   }
 
   const blocks = entriesToBlocks(entries);
-  const result = computePeriod(year, profile, blocks);
+  const previousBlocks =
+    isAdmin && period.n > 1 ? getPeriodBlocks(year.id, period.n - 1) : [];
+  const adminResult = isAdmin
+    ? computeAdminPeriod(profile, period, blocks, previousBlocks)
+    : null;
+  const result = adminResult ?? computePeriod(year, profile, blocks);
   const aggregated = aggregateLineItems(result.lineItems);
   // F1 is never a step-up target (it's the base grade); every grade above
   // it is a valid ride-up, and the set varies by year (FY26 has F1..F5,
-  // FY27's proposed merger drops it to F1..F4).
+  // FY27's proposed merger drops it to F1..F4). Unused for admin9080 (no
+  // step-up on that track), but harmless to compute either way.
   const stepUpGrades = (Object.keys(year.payPlan) as PayGrade[]).filter(
     (g) => g !== "F1",
   );
+  const allowedTypes: DayEntryType[] = isAdmin
+    ? ["off", "regular", "pto"]
+    : (Object.keys(TYPE_LABELS) as DayEntryType[]);
   const holidayNames = new Map(year.holidays.map((h) => [h.date, h.name]));
 
+  const OT_LABEL = "OT premium";
   const sumWhere = (pick: (label: string) => boolean) =>
     aggregated.filter((a) => pick(a.label)).reduce((s, a) => s + a.amount, 0);
   const regularTotal = sumWhere(
-    (l) => l !== FLSA_LABEL && !HOLIDAY_LABELS.has(l),
+    (l) => l !== FLSA_LABEL && l !== OT_LABEL && !HOLIDAY_LABELS.has(l),
   );
-  const flsaTotal = sumWhere((l) => l === FLSA_LABEL);
+  const flsaTotal = sumWhere((l) => l === FLSA_LABEL || l === OT_LABEL);
   const holidayTotal = sumWhere((l) => HOLIDAY_LABELS.has(l));
 
   return (
@@ -596,6 +627,7 @@ export function PeriodScreen({
               key={entry.date}
               entry={entry}
               stepUpGrades={stepUpGrades}
+              allowedTypes={allowedTypes}
               onChange={(next) => updateEntry(i, next)}
             />
           ),
@@ -630,15 +662,35 @@ export function PeriodScreen({
         <div className="mx-auto max-w-md px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
           <div className="flex justify-between text-[0.6875rem] text-ink-muted">
             <span>Total hours {result.totalHours}</span>
-            {result.otHours > 0 && <span>{result.otHours} over 106</span>}
+            {adminResult ? (
+              adminResult.otHours > 0 && (
+                <span>
+                  {adminResult.otHoursWeekI > 0 &&
+                    `Wk1: ${adminResult.otHoursWeekI} OT`}
+                  {adminResult.otHoursWeekI > 0 &&
+                    adminResult.otHoursWeekII > 0 &&
+                    " · "}
+                  {adminResult.otHoursWeekII > 0 &&
+                    `Wk2: ${adminResult.otHoursWeekII} OT`}
+                </span>
+              )
+            ) : (
+              result.otHours > 0 && <span>{result.otHours} over 106</span>
+            )}
           </div>
+          {adminResult && (
+            <div className="mt-1 flex justify-between text-[0.6875rem] text-ink-muted">
+              <span>Week 1: {adminResult.weekIHours}h</span>
+              <span>Week 2: {adminResult.weekIIHours}h</span>
+            </div>
+          )}
           <div className="mt-1 grid grid-cols-3 gap-2 text-[0.6875rem]">
             <div>
               <div className="text-ink-muted">Regular</div>
               <div className="tabular-nums">${regularTotal.toFixed(2)}</div>
             </div>
             <div>
-              <div className="text-ink-muted">FLSA</div>
+              <div className="text-ink-muted">{adminResult ? "OT" : "FLSA"}</div>
               <div className="tabular-nums">${flsaTotal.toFixed(2)}</div>
             </div>
             <div>

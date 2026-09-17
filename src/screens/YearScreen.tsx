@@ -3,11 +3,14 @@ import { AVAILABLE_YEARS } from "../app/years";
 import { useAppData } from "../app/AppData";
 import { buildYearCsv } from "../app/csvExport";
 import {
+  blocksToAdminEntries,
   blocksToEntries,
+  defaultAdmin9080DayEntries,
   defaultDayEntries,
   entriesToBlocks,
 } from "../app/period";
 import type { PayYear } from "../data/schema";
+import { computeAdminPeriod } from "../engine/adminPeriod";
 import { computePeriod } from "../engine/period";
 import type { Profile } from "../engine/types";
 
@@ -24,16 +27,30 @@ export function YearScreen({
 }) {
   const { getPeriodBlocks, progression } = useAppData();
   const memberGrade = progression?.grade ?? null;
+  const isAdmin = profile.track === "admin9080";
+  const shift = profile.shift ?? "A";
+  const fridayGroup = profile.fridayGroup ?? "week1";
 
   const rows = useMemo(() => {
     let running = 0;
     return year.periods.map((period) => {
       const saved = getPeriodBlocks(year.id, period.n);
-      const entries =
-        saved.length > 0
-          ? blocksToEntries(year, profile.shift, period, saved, memberGrade)
-          : defaultDayEntries(year, profile.shift, period, memberGrade);
-      const result = computePeriod(year, profile, entriesToBlocks(entries));
+      const entries = isAdmin
+        ? saved.length > 0
+          ? blocksToAdminEntries(period, fridayGroup, saved)
+          : defaultAdmin9080DayEntries(period, fridayGroup)
+        : saved.length > 0
+          ? blocksToEntries(year, shift, period, saved, memberGrade)
+          : defaultDayEntries(year, shift, period, memberGrade);
+      const blocks = entriesToBlocks(entries);
+      const result = isAdmin
+        ? computeAdminPeriod(
+            profile,
+            period,
+            blocks,
+            period.n > 1 ? getPeriodBlocks(year.id, period.n - 1) : [],
+          )
+        : computePeriod(year, profile, blocks);
       running += result.gross;
       return {
         period,
@@ -44,7 +61,7 @@ export function YearScreen({
         hasEntries: saved.length > 0,
       };
     });
-  }, [year, profile, getPeriodBlocks, memberGrade]);
+  }, [year, profile, getPeriodBlocks, memberGrade, isAdmin, shift, fridayGroup]);
 
   function handleExportCsv() {
     const csv = buildYearCsv(

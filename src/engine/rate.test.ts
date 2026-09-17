@@ -5,6 +5,8 @@ import type { Profile } from "./types";
 describe("effectiveRate", () => {
   const singleSegmentProfile: Profile = {
     shift: "A",
+    track: "shift",
+    fridayGroup: null,
     rateSegments: [
       { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
     ],
@@ -20,6 +22,8 @@ describe("effectiveRate", () => {
   it("folds incentives into the rate", () => {
     const withIncentive: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2026-09-26",
@@ -35,6 +39,8 @@ describe("effectiveRate", () => {
   it("picks the old rate before a step date and the new rate at/after it", () => {
     const splitProfile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
         {
@@ -53,6 +59,8 @@ describe("effectiveRate", () => {
   it("is order-independent for rate segments", () => {
     const outOfOrder: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2027-04-01",

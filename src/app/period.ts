@@ -1,7 +1,9 @@
 import type { Period, PayYear } from "../data/schema";
+import { findFridaysInPeriod } from "../engine/adminPeriod";
 import { addDays, scheduledHoursOn } from "../engine/schedule";
 import { nextGradeUp } from "./stepProgression";
 import type {
+  FridayGroup,
   HourBlock,
   LineItem,
   PayGrade,
@@ -165,6 +167,47 @@ export function defaultDayEntries(
   );
 }
 
+/**
+ * Seeds a 9/80 admin period's default schedule: Mon-Thu = 9hrs regular,
+ * the profile's off-Friday = 0 (off), the other Friday = 8hrs regular,
+ * Sat/Sun = 0. No holiday/step-up handling — out of scope for this track
+ * (docs note in the admin build: civilians aren't on this track at all,
+ * and holidays are a v1 scope cut for everyone on it).
+ */
+export function defaultAdmin9080DayEntries(
+  period: Period,
+  fridayGroup: FridayGroup,
+): DayEntry[] {
+  const [friday1, friday2] = findFridaysInPeriod(period);
+  // DayLine.grade only matters for type "stepUp", which this track never
+  // uses — any placeholder grade is fine here.
+  const placeholderGrade: PayGrade = "F4";
+
+  return datesInPeriod(period).map((date) => {
+    const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+    let hours = 0;
+    if (dow >= 1 && dow <= 4) {
+      hours = 9; // Mon-Thu
+    } else if (date === friday1) {
+      hours = fridayGroup === "week1" ? 0 : 8;
+    } else if (date === friday2) {
+      hours = fridayGroup === "week1" ? 8 : 0;
+    }
+    return {
+      date,
+      scheduledHours: hours,
+      isHoliday: false,
+      lines: [
+        hours > 0
+          ? { type: "regular", hours, grade: placeholderGrade }
+          : { type: "off", hours: 0, grade: placeholderGrade },
+      ],
+      holidayHoursWorked: 0,
+      holidayWorkedAccrued: false,
+    };
+  });
+}
+
 export function entriesToBlocks(entries: DayEntry[]): HourBlock[] {
   const blocks: HourBlock[] = [];
   for (const entry of entries) {
@@ -291,6 +334,45 @@ export function blocksToEntries(
 
     if (lines.length === 0) {
       lines.push({ type: "off", hours: 0, grade: defaultGrade });
+    }
+    return { ...entry, lines };
+  });
+}
+
+/** Reconstructs a 9/80 admin period's entries from saved blocks, same
+ * relationship `blocksToEntries` has to `defaultDayEntries`. Only ever
+ * expects "regular"/"pto" blocks — stepUp/tifmas/holiday blocks shouldn't
+ * occur on this track, and are just ignored (not crashed on) if stale data
+ * from a track switch somehow contains them. */
+export function blocksToAdminEntries(
+  period: Period,
+  fridayGroup: FridayGroup,
+  blocks: HourBlock[],
+): DayEntry[] {
+  const defaults = defaultAdmin9080DayEntries(period, fridayGroup);
+  const blocksByDate = new Map<string, HourBlock[]>();
+  for (const block of blocks) {
+    const existing = blocksByDate.get(block.date);
+    if (existing) existing.push(block);
+    else blocksByDate.set(block.date, [block]);
+  }
+
+  return defaults.map((entry) => {
+    const dayBlocks = blocksByDate.get(entry.date) ?? [];
+    const placeholderGrade = entry.lines[0]?.grade ?? "F4";
+    const lines: DayLine[] = [];
+    for (const block of dayBlocks) {
+      if (lines.length >= MAX_DAY_LINES) break;
+      if (block.type === "pto" || block.type === "regular") {
+        lines.push({
+          type: block.type,
+          hours: block.hours,
+          grade: placeholderGrade,
+        });
+      }
+    }
+    if (lines.length === 0) {
+      lines.push({ type: "off", hours: 0, grade: placeholderGrade });
     }
     return { ...entry, lines };
   });

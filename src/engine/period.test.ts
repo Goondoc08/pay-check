@@ -8,6 +8,8 @@ const year = parsePayYear(fy27Raw);
 
 const flatProfile: Profile = {
   shift: "A",
+  track: "shift",
+  fridayGroup: null,
   rateSegments: [
     { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
   ],
@@ -176,6 +178,8 @@ describe("computePeriod", () => {
     // split it instead.
     const splitProfile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
         {
@@ -232,6 +236,8 @@ describe("computePeriod", () => {
     // longevity ($284).
     const profile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2026-09-26",
@@ -287,6 +293,8 @@ describe("computePeriod", () => {
     // no FLSA premium line at all.
     const profile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2026-09-26",
@@ -342,6 +350,8 @@ describe("computePeriod", () => {
     // `=(B1*B13*1.5)+(D17*B13)` == hours * (1.5 * hourlyRate + incentiveTotal).
     const profile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2026-09-26",
@@ -375,6 +385,8 @@ describe("computePeriod", () => {
     // rate and D17 the incentive-per-hour.
     const profile: Profile = {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "2026-09-26",

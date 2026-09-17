@@ -19,6 +19,8 @@ describe("paystub parity — real checks", () => {
   function profile(hourlyRate: number, longevityAnnual: number): Profile {
     return {
       shift: "A",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: year.effectiveFrom,

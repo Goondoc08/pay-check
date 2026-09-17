@@ -19,6 +19,8 @@ const sample: StoredDataV1 = {
   version: 1,
   profile: {
     shift: "A",
+    track: "shift",
+    fridayGroup: null,
     rateSegments: [
       { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
     ],
@@ -123,6 +125,8 @@ describe("load", () => {
     expect(result.recovered).toBe(true);
     expect(result.data.profile).toEqual({
       shift: "B",
+      track: "shift",
+      fridayGroup: null,
       rateSegments: [
         {
           effectiveFrom: "1970-01-01",
