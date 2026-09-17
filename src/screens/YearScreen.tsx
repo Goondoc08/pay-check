@@ -61,7 +61,15 @@ export function YearScreen({
         hasEntries: saved.length > 0,
       };
     });
-  }, [year, profile, getPeriodBlocks, memberGrade, isAdmin, shift, fridayGroup]);
+  }, [
+    year,
+    profile,
+    getPeriodBlocks,
+    memberGrade,
+    isAdmin,
+    shift,
+    fridayGroup,
+  ]);
 
   function handleExportCsv() {
     const csv = buildYearCsv(

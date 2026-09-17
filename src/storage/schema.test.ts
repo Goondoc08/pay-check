@@ -16,7 +16,11 @@ describe("backward compatibility for real pre-existing saved data", () => {
     const realOldProfile = {
       shift: "A",
       rateSegments: [
-        { effectiveFrom: "2026-09-26", hourlyRate: 35.3302, incentiveTotal: 3.0906 },
+        {
+          effectiveFrom: "2026-09-26",
+          hourlyRate: 35.3302,
+          incentiveTotal: 3.0906,
+        },
       ],
       longevityAnnual: 284,
     };
@@ -34,17 +38,30 @@ describe("backward compatibility for real pre-existing saved data", () => {
       profile: {
         shift: "C",
         rateSegments: [
-          { effectiveFrom: "2026-09-26", hourlyRate: 26.8173, incentiveTotal: 0 },
+          {
+            effectiveFrom: "2026-09-26",
+            hourlyRate: 26.8173,
+            incentiveTotal: 0,
+          },
         ],
         longevityAnnual: 0,
       },
       periodEntries: {
         "FY27:14": [
-          { date: "2027-03-27", type: "regular", hours: 24, destination: "cash" },
+          {
+            date: "2027-03-27",
+            type: "regular",
+            hours: 24,
+            destination: "cash",
+          },
         ],
       },
       settings: { selectedYearId: "FY27", installCardDismissed: true },
-      progression: { grade: "F2", anniversaryDate: "2020-06-01", receivingStep: true },
+      progression: {
+        grade: "F2",
+        anniversaryDate: "2020-06-01",
+        receivingStep: true,
+      },
       certifications: null,
     };
     const result = storedDataV1Schema.parse(realOldStoredData);

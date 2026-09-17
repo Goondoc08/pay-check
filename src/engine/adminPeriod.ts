@@ -1,7 +1,13 @@
 import type { Period } from "../data/schema";
 import { addDays } from "./schedule";
 import { effectiveRate } from "./rate";
-import type { FridayGroup, HourBlock, LineItem, PeriodResult, Profile } from "./types";
+import type {
+  FridayGroup,
+  HourBlock,
+  LineItem,
+  PeriodResult,
+  Profile,
+} from "./types";
 
 /**
  * `PeriodResult` plus the per-workweek breakdown, so the UI can show
@@ -58,7 +64,10 @@ export function findFridaysInPeriod(period: Period): [string, string] {
 /** Which of a period's two Fridays this profile has off, every period,
  * never changing — "week1" skips the first (payday) Friday, "week2" skips
  * the last (period-end) Friday. */
-function fridayIsOff(fridayGroup: FridayGroup, isFirstFriday: boolean): boolean {
+function fridayIsOff(
+  fridayGroup: FridayGroup,
+  isFirstFriday: boolean,
+): boolean {
   return fridayGroup === "week1" ? isFirstFriday : !isFirstFriday;
 }
 
@@ -132,8 +141,12 @@ export function computeAdminPeriod(
   // days before this period's first Friday (both periods are 14 days).
   const prevFriday = addDays(friday1, -7);
 
-  const scheduled1 = fridayIsOff(fridayGroup, true) ? 0 : SCHEDULED_FRIDAY_HOURS;
-  const scheduled2 = fridayIsOff(fridayGroup, false) ? 0 : SCHEDULED_FRIDAY_HOURS;
+  const scheduled1 = fridayIsOff(fridayGroup, true)
+    ? 0
+    : SCHEDULED_FRIDAY_HOURS;
+  const scheduled2 = fridayIsOff(fridayGroup, false)
+    ? 0
+    : SCHEDULED_FRIDAY_HOURS;
   // The previous period's last Friday plays the same "last Friday of a
   // period" role every period (the group never changes), so it shares
   // friday2's on/off schedule.
@@ -170,7 +183,9 @@ export function computeAdminPeriod(
   const otHoursWeekII = Math.max(0, weekIIHours - ADMIN_FLSA_THRESHOLD_HOURS);
   const otHours = otHoursWeekI + otHoursWeekII;
 
-  const sorted = [...thisPeriodBlocks].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const sorted = [...thisPeriodBlocks].sort((a, b) =>
+    a.date < b.date ? -1 : 1,
+  );
   const lineItems: LineItem[] = [];
   let gross = 0;
   let totalHours = 0;

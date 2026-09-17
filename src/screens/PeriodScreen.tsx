@@ -662,21 +662,19 @@ export function PeriodScreen({
         <div className="mx-auto max-w-md px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
           <div className="flex justify-between text-[0.6875rem] text-ink-muted">
             <span>Total hours {result.totalHours}</span>
-            {adminResult ? (
-              adminResult.otHours > 0 && (
-                <span>
-                  {adminResult.otHoursWeekI > 0 &&
-                    `Wk1: ${adminResult.otHoursWeekI} OT`}
-                  {adminResult.otHoursWeekI > 0 &&
-                    adminResult.otHoursWeekII > 0 &&
-                    " · "}
-                  {adminResult.otHoursWeekII > 0 &&
-                    `Wk2: ${adminResult.otHoursWeekII} OT`}
-                </span>
-              )
-            ) : (
-              result.otHours > 0 && <span>{result.otHours} over 106</span>
-            )}
+            {adminResult
+              ? adminResult.otHours > 0 && (
+                  <span>
+                    {adminResult.otHoursWeekI > 0 &&
+                      `Wk1: ${adminResult.otHoursWeekI} OT`}
+                    {adminResult.otHoursWeekI > 0 &&
+                      adminResult.otHoursWeekII > 0 &&
+                      " · "}
+                    {adminResult.otHoursWeekII > 0 &&
+                      `Wk2: ${adminResult.otHoursWeekII} OT`}
+                  </span>
+                )
+              : result.otHours > 0 && <span>{result.otHours} over 106</span>}
           </div>
           {adminResult && (
             <div className="mt-1 flex justify-between text-[0.6875rem] text-ink-muted">
@@ -690,7 +688,9 @@ export function PeriodScreen({
               <div className="tabular-nums">${regularTotal.toFixed(2)}</div>
             </div>
             <div>
-              <div className="text-ink-muted">{adminResult ? "OT" : "FLSA"}</div>
+              <div className="text-ink-muted">
+                {adminResult ? "OT" : "FLSA"}
+              </div>
               <div className="tabular-nums">${flsaTotal.toFixed(2)}</div>
             </div>
             <div>
